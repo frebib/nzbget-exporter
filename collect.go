@@ -10,7 +10,7 @@ import (
 )
 
 type NZBGetCollector struct {
-	Config CollectConfig
+	Config *ExporterConfig
 
 	articleCache    *prom.Desc
 	daySize         *prom.Desc
@@ -35,8 +35,11 @@ type NZBGetCollector struct {
 	newsServerBytes  *prom.Desc
 }
 
-func NewNZBGetCollector(ns string) *NZBGetCollector {
+func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
+	ns := config.Namespace
 	return &NZBGetCollector{
+		Config: config,
+
 		articleCache: prom.NewDesc(
 			prom.BuildFQName(ns, "article_cache", "bytes"),
 			"Current usage of article cache",

@@ -47,8 +47,7 @@ func main() {
 	}
 
 	// Collect metrics for the provided backup provider
-	collector := NewNZBGetCollector(config.Namespace)
-	collector.Config = config.NZBGet
+	collector := NewNZBGetCollector(&config)
 	prom.MustRegister(collector)
 
 	var version string
