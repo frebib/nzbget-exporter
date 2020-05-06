@@ -29,15 +29,14 @@ func init() {
 }
 
 func main() {
-	log.Info("nzbget-exporter version " + Version)
-
-	var config Config
+	var config ExporterConfig
 	parser := flags.NewParser(&config, flags.HelpFlag|flags.PassDoubleDash)
-	parser.Group.LongDescription = "NZBGet Exporter Options"
+	parser.Groups()[0].ShortDescription = "Options"
 	_, err := parser.Parse()
 	if err != nil {
 		var flagsErr *flags.Error
 		if errors.As(err, &flagsErr) && flagsErr.Type == flags.ErrHelp {
+			fmt.Fprintf(os.Stderr, "NZBGet Exporter (version %s)\n\n", Version)
 			parser.WriteHelp(os.Stderr)
 			os.Exit(0)
 		} else {
@@ -45,6 +44,8 @@ func main() {
 				Fatal("parse flags")
 		}
 	}
+
+	log.Info("nzbget-exporter version " + Version)
 
 	// Collect metrics for the provided backup provider
 	collector := NewNZBGetCollector(&config)
