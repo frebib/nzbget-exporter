@@ -1,0 +1,49 @@
+---
+kind: pipeline
+type: docker
+name: default
+
+steps:
+- name: go tests
+  image: golang:alpine
+  commands:
+  - apk --no-cache add gcc git musl-dev
+
+  - go get
+  - go build -o nzbget_exporter
+
+  - go get -u golang.org/x/tools/cmd/goimports golang.org/x/lint/golint
+  - test -z "$(gofmt -l . | tee /dev/stderr)"
+  - test -z "$(goimports -local -e -d . | tee /dev/stderr)"
+  - golint ./...
+  - go test -covermode atomic ./...
+
+- name: docker build
+  pull: always
+  image: spritsail/docker-build
+  settings:
+    repo: frebib/nzbget-exporter
+
+- name: docker publish
+  pull: always
+  image: spritsail/docker-publish
+  settings:
+    repo: frebib/nzbget-exporter
+    tags:
+    - latest
+    - '%label org.label-schema.version'
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+---
+kind: signature
+hmac: aebc04ed2df82eb8a1d07fcd90a681352d5df2f3088f93f448985e8d929dced6
+
+...
