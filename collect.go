@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 )
@@ -172,7 +173,10 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 }
 
 func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
-	u, err := url.Parse(c.Config.Host + "/jsonrpc/" + endpoint)
+	// Remove right-trailing slashes, otherwise NZBGet will 404
+	host := strings.TrimRight(c.Config.Host, "/")
+
+	u, err := url.Parse(host + "/jsonrpc/" + endpoint)
 	if err != nil {
 		return err
 	}
