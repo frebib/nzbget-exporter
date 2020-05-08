@@ -45,6 +45,13 @@ func main() {
 		}
 	}
 
+	level, err := logrus.ParseLevel(config.LogLevel)
+	if err != nil {
+		log.WithError(err).Warnf("invalid log level")
+	} else {
+		log.Logger.SetLevel(level)
+	}
+
 	log.Info("nzbget-exporter version " + Version)
 
 	// Collect metrics for the provided backup provider

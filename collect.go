@@ -176,6 +176,7 @@ func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
 	if err != nil {
 		return err
 	}
+	log.WithField("url", u.String()).Debug("GET api")
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return err
