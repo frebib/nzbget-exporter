@@ -14,7 +14,6 @@ type NZBGetCollector struct {
 	Config *ExporterConfig
 
 	articleCache    *prom.Desc
-	daySize         *prom.Desc
 	downloadLimit   *prom.Desc
 	downloadPaused  *prom.Desc
 	downloadTimeSec *prom.Desc
@@ -23,14 +22,16 @@ type NZBGetCollector struct {
 	freeDiskSpace   *prom.Desc
 	postJobCount    *prom.Desc
 	postPaused      *prom.Desc
+	quotaDay        *prom.Desc
+	quotaMonth      *prom.Desc
+	quotaReached    *prom.Desc
 	remainingSize   *prom.Desc
 	resumeTime      *prom.Desc
 	scanPaused      *prom.Desc
 	serverStandBy   *prom.Desc
-	serverTime      *prom.Desc
 	startTime       *prom.Desc
 	threadCount     *prom.Desc
-	uRLCount        *prom.Desc
+	urlCount        *prom.Desc
 
 	newsServerActive *prom.Desc
 	newsServerBytes  *prom.Desc
@@ -45,10 +46,6 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 			prom.BuildFQName(ns, "article_cache", "bytes"),
 			"Current usage of article cache",
 			nil, nil,
-		),
-		daySize: prom.NewDesc(
-			prom.BuildFQName(ns, "quota", "day_bytes"),
-			"Daily quota in bytes", nil, nil,
 		),
 		downloadLimit: prom.NewDesc(
 			prom.BuildFQName(ns, "download", "limit"),
@@ -88,7 +85,20 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 		postPaused: prom.NewDesc(
 			prom.BuildFQName(ns, "post", "active"),
 			"1 if post-processor queue is currently active, 0 if paused",
-			nil, nil),
+			nil, nil,
+		),
+		quotaDay: prom.NewDesc(
+			prom.BuildFQName(ns, "quota", "day_bytes"),
+			"Daily quota in bytes", nil, nil,
+		),
+		quotaMonth: prom.NewDesc(
+			prom.BuildFQName(ns, "quota", "month_bytes"),
+			"Monthly quota in bytes", nil, nil,
+		),
+		quotaReached: prom.NewDesc(
+			prom.BuildFQName(ns, "quota", "reached"),
+			"1 if quota has been hit, 0 otherwise", nil, nil,
+		),
 		remainingSize: prom.NewDesc(
 			prom.BuildFQName(ns, "queue", "remaining_bytes"),
 			"Remaining size of all entries in download queue",
@@ -104,11 +114,27 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 			"1 if the scanning of incoming nzb-directory is currently active, 0 if paused",
 			nil, nil,
 		),
+		serverStandBy: prom.NewDesc(
+			prom.BuildFQName(ns, "", "standby"),
+			"1 if no downloads in progress (server paused or all jobs completed), otherwise 0 if there are currently downloads running",
+			nil, nil,
+		),
 		startTime: prom.NewDesc(
 			prom.BuildFQName(ns, "start_time", "seconds"),
 			"Server start time, in unixtime",
 			nil, nil,
 		),
+		threadCount: prom.NewDesc(
+			prom.BuildFQName(ns, "thread", "count"),
+			"Number of threads running",
+			nil, nil,
+		),
+		urlCount: prom.NewDesc(
+			prom.BuildFQName(ns, "url", "count"),
+			"Number of URLs in the URL-queue (including current file)",
+			nil, nil,
+		),
+
 		newsServerActive: prom.NewDesc(
 			prom.BuildFQName(ns, "news_server", "active"),
 			"News server used for obtaining articles, 1 if active",
@@ -131,7 +157,6 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 		return
 	}
 	metrics <- prom.MustNewConstMetric(c.articleCache, prom.GaugeValue, float64(s.ArticleCache))
-	metrics <- prom.MustNewConstMetric(c.daySize, prom.GaugeValue, float64(s.ArticleCache))
 	metrics <- prom.MustNewConstMetric(c.downloadLimit, prom.GaugeValue, float64(s.DownloadLimit))
 	metrics <- prom.MustNewConstMetric(c.downloadPaused, prom.CounterValue, floatOf(s.DownloadPaused))
 	metrics <- prom.MustNewConstMetric(c.downloadTimeSec, prom.GaugeValue, float64(s.DownloadTimeSec))
@@ -140,7 +165,16 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 	metrics <- prom.MustNewConstMetric(c.freeDiskSpace, prom.GaugeValue, float64(s.FreeDiskSpace))
 	metrics <- prom.MustNewConstMetric(c.postJobCount, prom.GaugeValue, float64(s.PostJobCount))
 	metrics <- prom.MustNewConstMetric(c.postPaused, prom.GaugeValue, floatOf(s.PostPaused))
+	metrics <- prom.MustNewConstMetric(c.quotaDay, prom.GaugeValue, float64(s.DaySize))
+	metrics <- prom.MustNewConstMetric(c.quotaMonth, prom.GaugeValue, float64(s.MonthSize))
+	metrics <- prom.MustNewConstMetric(c.quotaReached, prom.GaugeValue, floatOf(s.QuotaReached))
+	metrics <- prom.MustNewConstMetric(c.remainingSize, prom.GaugeValue, float64(s.RemainingSize))
+	metrics <- prom.MustNewConstMetric(c.resumeTime, prom.GaugeValue, float64(s.ResumeTime.Unix()))
+	metrics <- prom.MustNewConstMetric(c.scanPaused, prom.GaugeValue, floatOf(s.ScanPaused))
+	metrics <- prom.MustNewConstMetric(c.serverStandBy, prom.GaugeValue, floatOf(s.ServerStandBy))
 	metrics <- prom.MustNewConstMetric(c.startTime, prom.GaugeValue, float64(s.StartTime.Unix()))
+	metrics <- prom.MustNewConstMetric(c.threadCount, prom.GaugeValue, float64(s.ThreadCount))
+	metrics <- prom.MustNewConstMetric(c.urlCount, prom.GaugeValue, float64(s.URLCount))
 
 	var config NZBGetConfig
 	err = c.getApi("config", &config)
@@ -209,7 +243,6 @@ func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
 
 func (c *NZBGetCollector) Describe(descr chan<- *prom.Desc) {
 	descr <- c.articleCache
-	descr <- c.daySize
 	descr <- c.downloadLimit
 	descr <- c.downloadPaused
 	descr <- c.downloadTimeSec
@@ -218,11 +251,19 @@ func (c *NZBGetCollector) Describe(descr chan<- *prom.Desc) {
 	descr <- c.freeDiskSpace
 	descr <- c.postJobCount
 	descr <- c.postPaused
+	descr <- c.quotaDay
+	descr <- c.quotaMonth
+	descr <- c.quotaReached
 	descr <- c.remainingSize
 	descr <- c.resumeTime
 	descr <- c.scanPaused
+	descr <- c.serverStandBy
 	descr <- c.startTime
+	descr <- c.threadCount
+	descr <- c.urlCount
+
 	descr <- c.newsServerActive
+	descr <- c.newsServerBytes
 }
 
 var _ prom.Collector = &NZBGetCollector{}

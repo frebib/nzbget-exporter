@@ -1,4 +1,4 @@
-ARG EXPORTER_VER=0.0.2
+ARG EXPORTER_VER=0.0.3
 
 FROM golang:alpine3.11
 
