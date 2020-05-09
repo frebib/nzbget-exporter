@@ -17,12 +17,13 @@ type NZBGetCollector struct {
 	version *prom.Desc
 
 	articleCache    *prom.Desc
+	diskSpaceFree   *prom.Desc
+	diskSpaceMin    *prom.Desc
 	downloadLimit   *prom.Desc
 	downloadPaused  *prom.Desc
 	downloadTimeSec *prom.Desc
 	downloadedSize  *prom.Desc
 	forcedSize      *prom.Desc
-	freeDiskSpace   *prom.Desc
 	postJobCount    *prom.Desc
 	postPaused      *prom.Desc
 	quotaDay        *prom.Desc
@@ -57,6 +58,16 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 			"Current usage of article cache",
 			nil, nil,
 		),
+		diskSpaceFree: prom.NewDesc(
+			prom.BuildFQName(ns, "disk", "free_bytes"),
+			"Free disk space on 'DestDir'",
+			nil, nil,
+		),
+		diskSpaceMin: prom.NewDesc(
+			prom.BuildFQName(ns, "disk", "min_bytes"),
+			"Disk space limit before pausing the download queue",
+			nil, nil,
+		),
 		downloadLimit: prom.NewDesc(
 			prom.BuildFQName(ns, "download", "limit"),
 			"Current download limit, in bytes per second",
@@ -80,11 +91,6 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 		forcedSize: prom.NewDesc(
 			prom.BuildFQName(ns, "forced", "bytes"),
 			"Remaining size of entries with FORCE priority",
-			nil, nil,
-		),
-		freeDiskSpace: prom.NewDesc(
-			prom.BuildFQName(ns, "disk", "free_bytes"),
-			"Free disk space on 'DestDir'",
 			nil, nil,
 		),
 		postJobCount: prom.NewDesc(
@@ -179,6 +185,7 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
 			return
 		}
+		metrics <- prom.MustNewConstMetric(c.diskSpaceMin, prom.GaugeValue, float64(config.DiskSpace*1024*1024))
 	}()
 
 	go func() {
@@ -203,12 +210,12 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 			return
 		}
 		metrics <- prom.MustNewConstMetric(c.articleCache, prom.GaugeValue, float64(status.ArticleCache))
+		metrics <- prom.MustNewConstMetric(c.diskSpaceFree, prom.GaugeValue, float64(status.FreeDiskSpace))
 		metrics <- prom.MustNewConstMetric(c.downloadLimit, prom.GaugeValue, float64(status.DownloadLimit))
 		metrics <- prom.MustNewConstMetric(c.downloadPaused, prom.CounterValue, floatOf(status.DownloadPaused))
 		metrics <- prom.MustNewConstMetric(c.downloadTimeSec, prom.GaugeValue, float64(status.DownloadTimeSec))
 		metrics <- prom.MustNewConstMetric(c.downloadedSize, prom.CounterValue, float64(status.DownloadedSize))
 		metrics <- prom.MustNewConstMetric(c.forcedSize, prom.GaugeValue, float64(status.ForcedSize))
-		metrics <- prom.MustNewConstMetric(c.freeDiskSpace, prom.GaugeValue, float64(status.FreeDiskSpace))
 		metrics <- prom.MustNewConstMetric(c.postJobCount, prom.GaugeValue, float64(status.PostJobCount))
 		metrics <- prom.MustNewConstMetric(c.postPaused, prom.GaugeValue, floatOf(status.PostPaused))
 		metrics <- prom.MustNewConstMetric(c.quotaDay, prom.GaugeValue, float64(status.DaySize))
@@ -299,12 +306,13 @@ func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
 
 func (c *NZBGetCollector) Describe(descr chan<- *prom.Desc) {
 	descr <- c.articleCache
+	descr <- c.diskSpaceFree
+	descr <- c.diskSpaceMin
 	descr <- c.downloadLimit
 	descr <- c.downloadPaused
 	descr <- c.downloadTimeSec
 	descr <- c.downloadedSize
 	descr <- c.forcedSize
-	descr <- c.freeDiskSpace
 	descr <- c.postJobCount
 	descr <- c.postPaused
 	descr <- c.quotaDay
