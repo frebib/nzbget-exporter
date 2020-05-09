@@ -17,6 +17,8 @@ RUN go build \
 
 FROM spritsail/alpine:3.11
 
+ARG EXPORTER_VER
+
 LABEL maintainer="frebib <nzbget-exporter@frebib.net>" \
       org.label-schema.vendor="frebib" \
       org.label-schema.name="nzbget-exporter" \
