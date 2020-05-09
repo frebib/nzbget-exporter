@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 )
@@ -158,70 +159,107 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 }
 
 func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
-	var version string
-	err := c.getApi("version", &version)
-	if err != nil {
-		log.WithError(err).Error("api get version")
-		metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
-		return
-	}
-	metrics <- prom.MustNewConstMetric(c.version, prom.GaugeValue, 1, version)
-
-	var s Status
-	err = c.getApi("status", &s)
-	if err != nil {
-		log.WithError(err).Error("api get status")
-		metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
-		return
-	}
-	metrics <- prom.MustNewConstMetric(c.articleCache, prom.GaugeValue, float64(s.ArticleCache))
-	metrics <- prom.MustNewConstMetric(c.downloadLimit, prom.GaugeValue, float64(s.DownloadLimit))
-	metrics <- prom.MustNewConstMetric(c.downloadPaused, prom.CounterValue, floatOf(s.DownloadPaused))
-	metrics <- prom.MustNewConstMetric(c.downloadTimeSec, prom.GaugeValue, float64(s.DownloadTimeSec))
-	metrics <- prom.MustNewConstMetric(c.downloadedSize, prom.CounterValue, float64(s.DownloadedSize))
-	metrics <- prom.MustNewConstMetric(c.forcedSize, prom.GaugeValue, float64(s.ForcedSize))
-	metrics <- prom.MustNewConstMetric(c.freeDiskSpace, prom.GaugeValue, float64(s.FreeDiskSpace))
-	metrics <- prom.MustNewConstMetric(c.postJobCount, prom.GaugeValue, float64(s.PostJobCount))
-	metrics <- prom.MustNewConstMetric(c.postPaused, prom.GaugeValue, floatOf(s.PostPaused))
-	metrics <- prom.MustNewConstMetric(c.quotaDay, prom.GaugeValue, float64(s.DaySize))
-	metrics <- prom.MustNewConstMetric(c.quotaMonth, prom.GaugeValue, float64(s.MonthSize))
-	metrics <- prom.MustNewConstMetric(c.quotaReached, prom.GaugeValue, floatOf(s.QuotaReached))
-	metrics <- prom.MustNewConstMetric(c.remainingSize, prom.GaugeValue, float64(s.RemainingSize))
-	metrics <- prom.MustNewConstMetric(c.resumeTime, prom.GaugeValue, float64(s.ResumeTime.Unix()))
-	metrics <- prom.MustNewConstMetric(c.scanPaused, prom.GaugeValue, floatOf(s.ScanPaused))
-	metrics <- prom.MustNewConstMetric(c.serverStandBy, prom.GaugeValue, floatOf(s.ServerStandBy))
-	metrics <- prom.MustNewConstMetric(c.startTime, prom.GaugeValue, float64(s.StartTime.Unix()))
-	metrics <- prom.MustNewConstMetric(c.threadCount, prom.GaugeValue, float64(s.ThreadCount))
-	metrics <- prom.MustNewConstMetric(c.urlCount, prom.GaugeValue, float64(s.URLCount))
-
 	var config NZBGetConfig
-	err = c.getApi("config", &config)
-	if err != nil {
-		log.WithError(err).Error("api get config")
-		metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
-		return
-	}
-
+	var status Status
+	var version string
 	var volume []ServerVolume
-	err = c.getApi("servervolumes", &volume)
-	if err != nil {
-		log.WithError(err).Error("api get servervolumes")
-		metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
-		return
-	}
 
-	// https://nzbget.net/api/servervolumes
-	// NOTE: The first record (serverid=0) are totals for all servers
-	for _, srv := range s.NewsServers {
-		idx := srv.ID
-		id := fmt.Sprintf("%d", srv.ID)
-		name := config.Server[idx-1].Name
-		active := floatOf(srv.Active)
-		bytes := float64(volume[idx].TotalBytes)
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-		metrics <- prom.MustNewConstMetric(c.newsServerActive, prom.GaugeValue, active, id, name)
-		metrics <- prom.MustNewConstMetric(c.newsServerBytes, prom.GaugeValue, bytes, id, name)
-	}
+	// Wait for config separately as multiple gothreads require it
+	var cfgWg sync.WaitGroup
+	cfgWg.Add(1)
+
+	go func() {
+		defer cfgWg.Done()
+		err := c.getApi("config", &config)
+		if err != nil {
+			log.WithError(err).Error("api get config")
+			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			return
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		err := c.getApi("version", &version)
+		if err != nil {
+			log.WithError(err).Error("api get version")
+			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			return
+		}
+		metrics <- prom.MustNewConstMetric(c.version, prom.GaugeValue, 1, version)
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		err := c.getApi("status", &status)
+		if err != nil {
+			log.WithError(err).Error("api get status")
+			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			return
+		}
+		metrics <- prom.MustNewConstMetric(c.articleCache, prom.GaugeValue, float64(status.ArticleCache))
+		metrics <- prom.MustNewConstMetric(c.downloadLimit, prom.GaugeValue, float64(status.DownloadLimit))
+		metrics <- prom.MustNewConstMetric(c.downloadPaused, prom.CounterValue, floatOf(status.DownloadPaused))
+		metrics <- prom.MustNewConstMetric(c.downloadTimeSec, prom.GaugeValue, float64(status.DownloadTimeSec))
+		metrics <- prom.MustNewConstMetric(c.downloadedSize, prom.CounterValue, float64(status.DownloadedSize))
+		metrics <- prom.MustNewConstMetric(c.forcedSize, prom.GaugeValue, float64(status.ForcedSize))
+		metrics <- prom.MustNewConstMetric(c.freeDiskSpace, prom.GaugeValue, float64(status.FreeDiskSpace))
+		metrics <- prom.MustNewConstMetric(c.postJobCount, prom.GaugeValue, float64(status.PostJobCount))
+		metrics <- prom.MustNewConstMetric(c.postPaused, prom.GaugeValue, floatOf(status.PostPaused))
+		metrics <- prom.MustNewConstMetric(c.quotaDay, prom.GaugeValue, float64(status.DaySize))
+		metrics <- prom.MustNewConstMetric(c.quotaMonth, prom.GaugeValue, float64(status.MonthSize))
+		metrics <- prom.MustNewConstMetric(c.quotaReached, prom.GaugeValue, floatOf(status.QuotaReached))
+		metrics <- prom.MustNewConstMetric(c.remainingSize, prom.GaugeValue, float64(status.RemainingSize))
+		metrics <- prom.MustNewConstMetric(c.resumeTime, prom.GaugeValue, float64(status.ResumeTime.Unix()))
+		metrics <- prom.MustNewConstMetric(c.scanPaused, prom.GaugeValue, floatOf(status.ScanPaused))
+		metrics <- prom.MustNewConstMetric(c.serverStandBy, prom.GaugeValue, floatOf(status.ServerStandBy))
+		metrics <- prom.MustNewConstMetric(c.startTime, prom.GaugeValue, float64(status.StartTime.Unix()))
+		metrics <- prom.MustNewConstMetric(c.threadCount, prom.GaugeValue, float64(status.ThreadCount))
+		metrics <- prom.MustNewConstMetric(c.urlCount, prom.GaugeValue, float64(status.URLCount))
+
+		cfgWg.Wait()
+		for _, srv := range status.NewsServers {
+			idx := srv.ID
+			id := fmt.Sprintf("%d", srv.ID)
+			name := config.Server[idx-1].Name
+			active := floatOf(srv.Active)
+
+			metrics <- prom.MustNewConstMetric(c.newsServerActive, prom.GaugeValue, active, id, name)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		err := c.getApi("servervolumes", &volume)
+		if err != nil {
+			log.WithError(err).Error("api get servervolumes")
+			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			return
+		}
+
+		cfgWg.Wait()
+		// https://nzbget.net/api/servervolumes
+		// NOTE: The first record (serverid=0) are totals for all servers
+		for _, srv := range volume {
+			if srv.ID == 0 {
+				continue
+			}
+			idx := srv.ID
+			id := fmt.Sprintf("%d", srv.ID)
+			name := config.Server[idx-1].Name
+			bytes := float64(volume[idx].TotalBytes)
+
+			metrics <- prom.MustNewConstMetric(c.newsServerBytes, prom.GaugeValue, bytes, id, name)
+		}
+	}()
+
+	wg.Wait()
 }
 
 func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
