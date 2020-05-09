@@ -13,6 +13,8 @@ import (
 type NZBGetCollector struct {
 	Config *ExporterConfig
 
+	version *prom.Desc
+
 	articleCache    *prom.Desc
 	downloadLimit   *prom.Desc
 	downloadPaused  *prom.Desc
@@ -39,8 +41,15 @@ type NZBGetCollector struct {
 
 func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 	ns := config.Namespace
+
 	return &NZBGetCollector{
 		Config: config,
+
+		version: prom.NewDesc(
+			prom.BuildFQName(ns, "", "version"),
+			"always 1. label 'version' contains nzbget server version",
+			[]string{"version"}, nil,
+		),
 
 		articleCache: prom.NewDesc(
 			prom.BuildFQName(ns, "article_cache", "bytes"),
@@ -149,8 +158,17 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 }
 
 func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
+	var version string
+	err := c.getApi("version", &version)
+	if err != nil {
+		log.WithError(err).Error("api get version")
+		metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+		return
+	}
+	metrics <- prom.MustNewConstMetric(c.version, prom.GaugeValue, 1, version)
+
 	var s Status
-	err := c.getApi("status", &s)
+	err = c.getApi("status", &s)
 	if err != nil {
 		log.WithError(err).Error("api get status")
 		metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
