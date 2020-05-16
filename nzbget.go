@@ -349,7 +349,7 @@ type ServerVolume struct {
 func (v *ServerVolume) UnmarshalJSON(b []byte) error {
 	type temp struct {
 		ServerID    int    `json:"ServerID"`
-		TotalSizeLo uint32 `json:"TotalSizeLo"`
+		TotalSizeLo int32  `json:"TotalSizeLo"`
 		TotalSizeHi uint32 `json:"TotalSizeHi"`
 	}
 
@@ -360,6 +360,12 @@ func (v *ServerVolume) UnmarshalJSON(b []byte) error {
 	}
 
 	v.ID = values.ServerID
-	v.TotalBytes = joinInt64(values.TotalSizeLo, values.TotalSizeHi)
+
+	// For some reason *Lo values might be negative on the serialized JSON received from NZBGet causing an error:
+	// `json: cannot unmarshal number -1 into Go struct field temp.TotalSizeLo of type uint32`
+	// See: https://forum.nzbget.net/viewtopic.php?t=3711
+	// For this reason, we unmarshal them as signed then use the unsigned value
+	v.TotalBytes = joinInt64(uint32(values.TotalSizeLo), values.TotalSizeHi)
+
 	return nil
 }
