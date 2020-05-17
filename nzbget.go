@@ -64,19 +64,19 @@ func (s *Status) UnmarshalJSON(b []byte) error {
 
 	type temp struct {
 		ArticleCacheHi   uint32 `json:"ArticleCacheHi"`
-		ArticleCacheLo   uint32 `json:"ArticleCacheLo"`
+		ArticleCacheLo   int32  `json:"ArticleCacheLo"`
 		DaySizeHi        uint32 `json:"DaySizeHi"`
-		DaySizeLo        uint32 `json:"DaySizeLo"`
+		DaySizeLo        int32  `json:"DaySizeLo"`
 		DownloadedSizeHi uint32 `json:"DownloadedSizeHi"`
-		DownloadedSizeLo uint32 `json:"DownloadedSizeLo"`
+		DownloadedSizeLo int32  `json:"DownloadedSizeLo"`
 		ForcedSizeHi     uint32 `json:"ForcedSizeHi"`
-		ForcedSizeLo     uint32 `json:"ForcedSizeLo"`
+		ForcedSizeLo     int32  `json:"ForcedSizeLo"`
 		FreeDiskSpaceHi  uint32 `json:"FreeDiskSpaceHi"`
-		FreeDiskSpaceLo  uint32 `json:"FreeDiskSpaceLo"`
+		FreeDiskSpaceLo  int32  `json:"FreeDiskSpaceLo"`
 		MonthSizeHi      uint32 `json:"MonthSizeHi"`
-		MonthSizeLo      uint32 `json:"MonthSizeLo"`
+		MonthSizeLo      int32  `json:"MonthSizeLo"`
 		RemainingSizeHi  uint32 `json:"RemainingSizeHi"`
-		RemainingSizeLo  uint32 `json:"RemainingSizeLo"`
+		RemainingSizeLo  int32  `json:"RemainingSizeLo"`
 
 		ServerTime int64 `json:"ServerTime"`
 		ResumeTime int64 `json:"ResumeTime"`
@@ -342,30 +342,26 @@ func reflectInto(v reflect.Value, str string) {
 }
 
 type ServerVolume struct {
-	ID         int   `json:"-"`
-	TotalBytes int64 `json:"-"`
+	ID             int   `json:"-"`
+	TotalBytes     int64 `json:"-"`
+	BytesPerSecond int64 `json:"-"`
 }
 
 func (v *ServerVolume) UnmarshalJSON(b []byte) error {
-	type temp struct {
+	values := struct {
 		ServerID    int    `json:"ServerID"`
 		TotalSizeLo int32  `json:"TotalSizeLo"`
 		TotalSizeHi uint32 `json:"TotalSizeHi"`
-	}
 
-	values := temp{}
+	}{}
+
 	err := json.Unmarshal(b, &values)
 	if err != nil {
 		return err
 	}
 
 	v.ID = values.ServerID
-
-	// For some reason *Lo values might be negative on the serialized JSON received from NZBGet causing an error:
-	// `json: cannot unmarshal number -1 into Go struct field temp.TotalSizeLo of type uint32`
-	// See: https://forum.nzbget.net/viewtopic.php?t=3711
-	// For this reason, we unmarshal them as signed then use the unsigned value
-	v.TotalBytes = joinInt64(uint32(values.TotalSizeLo), values.TotalSizeHi)
+	v.TotalBytes = joinInt64(values.TotalSizeLo, values.TotalSizeHi)
 
 	return nil
 }
