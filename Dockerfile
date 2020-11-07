@@ -1,6 +1,6 @@
 ARG EXPORTER_VER=0.1.0
 
-FROM golang:alpine3.11
+FROM golang:alpine3.12
 
 WORKDIR /build
 ADD go.mod go.sum ./
@@ -15,7 +15,7 @@ RUN go build \
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FROM spritsail/alpine:3.11
+FROM spritsail/alpine:3.12
 
 ARG EXPORTER_VER
 
