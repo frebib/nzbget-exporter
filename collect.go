@@ -175,6 +175,7 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 
 	// Wait for config separately as multiple gothreads require it
 	var cfgWg sync.WaitGroup
+	var cfgErr = false
 	cfgWg.Add(1)
 
 	go func() {
@@ -183,6 +184,7 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 		if err != nil {
 			log.WithError(err).Error("api get config")
 			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			cfgErr = true
 			return
 		}
 		metrics <- prom.MustNewConstMetric(c.diskSpaceMin, prom.GaugeValue, float64(config.DiskSpace*1024*1024))
@@ -230,6 +232,9 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 		metrics <- prom.MustNewConstMetric(c.urlCount, prom.GaugeValue, float64(status.URLCount))
 
 		cfgWg.Wait()
+		if cfgErr {
+			return
+		}
 		for _, srv := range status.NewsServers {
 			idx := srv.ID
 			id := fmt.Sprintf("%d", srv.ID)
@@ -251,6 +256,9 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 		}
 
 		cfgWg.Wait()
+		if cfgErr {
+			return
+		}
 		// https://nzbget.net/api/servervolumes
 		// NOTE: The first record (serverid=0) are totals for all servers
 		for _, srv := range volume {
