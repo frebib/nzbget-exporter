@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 )
@@ -169,9 +170,10 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 	var status Status
 	var version string
 	var volume []ServerVolume
+	var history []History
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	// Wait for config separately as multiple gothreads require it
 	var cfgWg sync.WaitGroup
@@ -272,6 +274,20 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 
 			metrics <- prom.MustNewConstMetric(c.newsServerBytes, prom.GaugeValue, bytes, id, name)
 		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		start := time.Now()
+		err := c.getApi("history", &history)
+		if err != nil {
+			log.WithError(err).Error("api get history")
+			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			return
+		}
+		end := time.Now()
+		log.Infof("history fetch/decode took %dms", end.Sub(start).Milliseconds())
 	}()
 
 	wg.Wait()
