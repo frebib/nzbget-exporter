@@ -21,8 +21,6 @@ steps:
 - name: docker build
   pull: always
   image: spritsail/docker-build
-  settings:
-    repo: frebib/nzbget-exporter
 
 - name: docker publish
   pull: always
@@ -32,10 +30,25 @@ steps:
     tags:
     - latest
     - '%label org.label-schema.version'
-    username:
-      from_secret: docker_username
-    password:
-      from_secret: docker_password
+    login: {from_secret: docker_login}
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+---
+kind: pipeline
+name: update-readme
+
+steps:
+- name: dockerhub-readme
+  pull: always
+  image: jlesage/drone-push-readme
+  settings:
+    username: {from_secret: docker_username}
+    password: {from_secret: docker_password}
+    repo: frebib/nzbget-exporter
   when:
     branch:
     - master
@@ -44,6 +57,6 @@ steps:
 
 ---
 kind: signature
-hmac: aebc04ed2df82eb8a1d07fcd90a681352d5df2f3088f93f448985e8d929dced6
+hmac: 934099a4a8192763ffe0133d5513c7f511b6e5695acf44dee123e12c805d8d71
 
 ...
