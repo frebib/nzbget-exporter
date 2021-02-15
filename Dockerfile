@@ -1,6 +1,6 @@
-ARG EXPORTER_VER=0.1.0
+ARG EXPORTER_VER=0.2.0
 
-FROM golang:alpine3.12
+FROM golang:alpine3.13
 
 WORKDIR /build
 ADD go.mod go.sum ./

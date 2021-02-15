@@ -9,7 +9,9 @@ steps:
   commands:
   - apk --no-cache add gcc git musl-dev
 
-  - go get
+  - GO111MODULE=off go get github.com/abeMedia/enumer
+
+  - go generate
   - go build -o nzbget_exporter
 
   - go get -u golang.org/x/tools/cmd/goimports golang.org/x/lint/golint

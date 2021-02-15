@@ -39,6 +39,23 @@ type NZBGetCollector struct {
 
 	newsServerActive *prom.Desc
 	newsServerBytes  *prom.Desc
+
+	historyCategoryCount       *prom.Desc
+	historyFileSizeBytes       *prom.Desc
+	historyFileCount           *prom.Desc
+	historyRemainingFileCount  *prom.Desc
+	historyArticleCount        *prom.Desc
+	historySuccessArticleCount *prom.Desc
+	historyFailedArticleCount  *prom.Desc
+	historyDownloadTime        *prom.Desc
+	historyDownloadSizeBytes   *prom.Desc
+	historyPostTime            *prom.Desc
+	historyParTime             *prom.Desc
+	historyRepairTime          *prom.Desc
+	historyUnpackTime          *prom.Desc
+	historyStatusCount         *prom.Desc
+	historyParStatusCount      *prom.Desc
+	historyUnpackStatusCount   *prom.Desc
 }
 
 func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
@@ -161,6 +178,87 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 			"Total bytes downloaded from this news server",
 			[]string{"id", "server"}, nil,
 		),
+
+		historyCategoryCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_category", "count"),
+			"Number of history items in each category",
+			[]string{"category"}, nil,
+		),
+		historyFileSizeBytes: prom.NewDesc(
+			prom.BuildFQName(ns, "history_file_size", "total_bytes"),
+			"Total bytes of all files in history",
+			nil, nil,
+		),
+		historyFileCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_file", "count"),
+			"Number of files in history",
+			nil, nil,
+		),
+		historyRemainingFileCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_file", "remaining_count"),
+			"Number of remaining files parked in history",
+			nil, nil,
+		),
+		historyArticleCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_article", "count"),
+			"Number of articles in history",
+			nil, nil,
+		),
+		historySuccessArticleCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_article", "success_count"),
+			"Number of successful articles in history",
+			nil, nil,
+		),
+		historyFailedArticleCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_article", "failed_count"),
+			"Number of failed articles in history",
+			nil, nil,
+		),
+		historyDownloadTime: prom.NewDesc(
+			prom.BuildFQName(ns, "history_download", "time_seconds"),
+			"Download time in seconds",
+			nil, nil,
+		),
+		historyDownloadSizeBytes: prom.NewDesc(
+			prom.BuildFQName(ns, "history_download", "size_bytes"),
+			"Total downloaded size in history, in bytes",
+			nil, nil,
+		),
+		historyPostTime: prom.NewDesc(
+			prom.BuildFQName(ns, "history_post_process", "time_seconds"),
+			"Total post-processing time in seconds in history",
+			nil, nil,
+		),
+		historyParTime: prom.NewDesc(
+			prom.BuildFQName(ns, "history_par", "time_seconds"),
+			"Total par-check time in seconds in history",
+			nil, nil,
+		),
+		historyRepairTime: prom.NewDesc(
+			prom.BuildFQName(ns, "history_par_repair", "time_seconds"),
+			"Par-repair time in seconds in history",
+			nil, nil,
+		),
+		historyUnpackTime: prom.NewDesc(
+			prom.BuildFQName(ns, "history_unpack", "time_seconds"),
+			"Unpack time in seconds in history",
+			nil, nil,
+		),
+		historyStatusCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_status", "count"),
+			"Number of history items per status",
+			[]string{"reason", "status"}, nil,
+		),
+		historyParStatusCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_par_status", "count"),
+			"Number of history items per par status",
+			[]string{"status"}, nil,
+		),
+		historyUnpackStatusCount: prom.NewDesc(
+			prom.BuildFQName(ns, "history_unpack_status", "count"),
+			"Number of history items per unpack status",
+			[]string{"status"}, nil,
+		),
 	}
 }
 
@@ -169,9 +267,10 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 	var status Status
 	var version string
 	var volume []ServerVolume
+	var history []History
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	// Wait for config separately as multiple gothreads require it
 	var cfgWg sync.WaitGroup
@@ -274,6 +373,82 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 		}
 	}()
 
+	go func() {
+		defer wg.Done()
+
+		err := c.getApi("history", &history)
+		if err != nil {
+			log.WithError(err).Error("api get history")
+			metrics <- prom.NewInvalidMetric(prom.NewInvalidDesc(err), err)
+			return
+		}
+
+		var (
+			fileSize int64
+			fileCount,
+			remainingCount,
+			articleCount,
+			articleSuccessCount,
+			articleFailureCount,
+			downloadTime uint64
+			downloadSize int64
+			postTime,
+			parTime,
+			repairTime,
+			unpackTime uint64
+
+			categories   = map[string]uint64{}
+			statuses     = map[string]map[string]uint64{}
+			parStatus    = map[string]uint64{}
+			unpackStatus = map[string]uint64{}
+		)
+
+		for _, hi := range history {
+			fileSize += hi.FileSize
+			fileCount += hi.FileCount
+			remainingCount += hi.RemainingFileCount
+			articleCount += hi.TotalArticles
+			articleSuccessCount += hi.SuccessArticles
+			articleFailureCount += hi.FailedArticles
+			downloadTime += hi.DownloadTimeSec
+			downloadSize += hi.DownloadedSize
+			postTime += hi.PostTotalTimeSec
+			parTime += hi.ParTimeSec
+			repairTime += hi.ParTimeSec
+			unpackTime += hi.UnpackTimeSec
+
+			categories[hi.Category]++
+			parStatus[strings.ToLower(hi.ParStatus.String())]++
+			unpackStatus[strings.ToLower(hi.UnpackStatus.String())]++
+
+			// status is 'status/reason' such as 'success/health'
+			parts := strings.Split(strings.ToLower(hi.Status), "/")
+			status := parts[0]
+			reason := parts[1]
+			if statuses[status] == nil {
+				statuses[status] = map[string]uint64{}
+			}
+			statuses[status][reason]++
+		}
+
+		metrics <- prom.MustNewConstMetric(c.historyFileSizeBytes, prom.CounterValue, float64(fileSize))
+		metrics <- prom.MustNewConstMetric(c.historyFileCount, prom.CounterValue, float64(fileCount))
+		metrics <- prom.MustNewConstMetric(c.historyRemainingFileCount, prom.CounterValue, float64(remainingCount))
+		metrics <- prom.MustNewConstMetric(c.historyArticleCount, prom.CounterValue, float64(articleCount))
+		metrics <- prom.MustNewConstMetric(c.historySuccessArticleCount, prom.CounterValue, float64(articleSuccessCount))
+		metrics <- prom.MustNewConstMetric(c.historyFailedArticleCount, prom.CounterValue, float64(articleFailureCount))
+		metrics <- prom.MustNewConstMetric(c.historyDownloadTime, prom.CounterValue, float64(downloadTime))
+		metrics <- prom.MustNewConstMetric(c.historyDownloadSizeBytes, prom.CounterValue, float64(downloadSize))
+		metrics <- prom.MustNewConstMetric(c.historyPostTime, prom.CounterValue, float64(postTime))
+		metrics <- prom.MustNewConstMetric(c.historyParTime, prom.CounterValue, float64(parTime))
+		metrics <- prom.MustNewConstMetric(c.historyRepairTime, prom.CounterValue, float64(repairTime))
+		metrics <- prom.MustNewConstMetric(c.historyUnpackTime, prom.CounterValue, float64(unpackTime))
+		sendConstMapMetric(metrics, c.historyCategoryCount, prom.CounterValue, categories)
+		sendConstMapMapMetric(metrics, c.historyStatusCount, prom.CounterValue, statuses)
+		sendConstMapMetric(metrics, c.historyParStatusCount, prom.CounterValue, parStatus)
+		sendConstMapMetric(metrics, c.historyUnpackStatusCount, prom.CounterValue, unpackStatus)
+	}()
+
 	wg.Wait()
 }
 
@@ -312,6 +487,19 @@ func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
 	return json.Unmarshal(response.Result, out)
 }
 
+func sendConstMapMetric(metrics chan<- prom.Metric, desc *prom.Desc, valueType prom.ValueType, values map[string]uint64, labelValues ...string) {
+	for key, value := range values {
+		labels := append([]string{key}, labelValues...)
+		metrics <- prom.MustNewConstMetric(desc, valueType, float64(value), labels...)
+	}
+}
+func sendConstMapMapMetric(metrics chan<- prom.Metric, desc *prom.Desc, valueType prom.ValueType, values map[string]map[string]uint64, labelValues ...string) {
+	for key, inner := range values {
+		labels := append([]string{key}, labelValues...)
+		sendConstMapMetric(metrics, desc, valueType, inner, labels...)
+	}
+}
+
 func (c *NZBGetCollector) Describe(descr chan<- *prom.Desc) {
 	descr <- c.articleCache
 	descr <- c.diskSpaceFree
@@ -336,6 +524,23 @@ func (c *NZBGetCollector) Describe(descr chan<- *prom.Desc) {
 
 	descr <- c.newsServerActive
 	descr <- c.newsServerBytes
+
+	descr <- c.historyCategoryCount
+	descr <- c.historyFileSizeBytes
+	descr <- c.historyFileCount
+	descr <- c.historyRemainingFileCount
+	descr <- c.historyArticleCount
+	descr <- c.historySuccessArticleCount
+	descr <- c.historyFailedArticleCount
+	descr <- c.historyDownloadTime
+	descr <- c.historyDownloadSizeBytes
+	descr <- c.historyPostTime
+	descr <- c.historyParTime
+	descr <- c.historyRepairTime
+	descr <- c.historyUnpackTime
+	descr <- c.historyStatusCount
+	descr <- c.historyParStatusCount
+	descr <- c.historyUnpackStatusCount
 }
 
 var _ prom.Collector = &NZBGetCollector{}
