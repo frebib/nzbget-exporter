@@ -13,7 +13,7 @@
 A Prometheus-style exporter for NZBGet metrics and statistics via the NZBGet API. It does what it says on the tin!
 
 ### Important notice
-NZBGet has an [unsigned integer bug](https://github.com/nzbget/nzbget/issues/693) that causes this exporter to return 500 errors. It has been [fixed upstream in master](https://github.com/nzbget/nzbget/commit/a124a91a84d3221dea25d7f5bb51a837ff75183a), but is yet to be included in any release versions. It is adviseable to use a patched build of NZBGet with this exporter, otherwise you may experience large periods of time with no metrics. All builds of [spritsail/nzbget](https://github.com/spritsail/nzbget) Docker image contain the patch, if you happen to be running NZBGet in Docker.
+NZBGet has an [unsigned integer bug](https://github.com/nzbget/nzbget/issues/693) that causes this exporter to return 500 errors. It has been [fixed in NZBGet v21.1 and newer](https://github.com/nzbget/nzbget/commit/a124a91a84d3221dea25d7f5bb51a837ff75183a). It is adviseable to use the latest version of NZBGet with this exporter, otherwise you may experience large periods of time with no metrics.
 
 ## Getting Started
 
