@@ -1,7 +1,6 @@
 ---
 kind: pipeline
-type: docker
-name: default
+name: tests
 
 steps:
 - name: go tests
@@ -21,6 +20,14 @@ steps:
   - golint ./...
   - go test -covermode atomic ./...
 
+---
+kind: pipeline
+name: docker
+
+depends_on:
+- tests
+
+steps:
 - name: docker build
   pull: always
   image: spritsail/docker-build
