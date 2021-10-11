@@ -9,12 +9,13 @@ steps:
   commands:
   - apk --no-cache add gcc git musl-dev
 
-  - GO111MODULE=off go get github.com/abeMedia/enumer
+  - go install github.com/niktri/enumerx@latest
 
   - go generate
   - go build -o nzbget_exporter
 
-  - go get -u golang.org/x/tools/cmd/goimports golang.org/x/lint/golint
+  - go install golang.org/x/tools/cmd/goimports@latest
+  - go install golang.org/x/lint/golint@latest
   - test -z "$(gofmt -l . | tee /dev/stderr)"
   - test -z "$(goimports -local -e -d . | tee /dev/stderr)"
   - golint ./...

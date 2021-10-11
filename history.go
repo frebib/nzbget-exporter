@@ -73,7 +73,7 @@ type (
 	}
 )
 
-//go:generate enumer -type=HistoryKind -trimprefix=Kind -json
+//go:generate enumerx -type=HistoryKind -trimprefix=Kind -json
 type HistoryKind int
 
 const (
@@ -82,7 +82,7 @@ const (
 	KindDUP
 )
 
-//go:generate enumer -type=ParStatus -trimprefix=ParStatus -transform=macro -json
+//go:generate enumerx -type=ParStatus -trimprefix=@type -transform=snake_upper -json
 type ParStatus int
 
 const (
@@ -93,7 +93,7 @@ const (
 	ParStatusManual
 )
 
-//go:generate enumer -type=UnpackStatus -trimprefix=UnpackStatus -transform=macro -json
+//go:generate enumerx -type=UnpackStatus -trimprefix=@type -transform=snake_upper -json
 type UnpackStatus int
 
 const (
@@ -104,7 +104,7 @@ const (
 	UnpackStatusSuccess
 )
 
-//go:generate enumer -type=URLStatus -trimprefix=URLStatus -transform=macro -json
+//go:generate enumerx -type=URLStatus -trimprefix=@type -transform=snake_upper -json
 type URLStatus int
 
 const (
@@ -115,7 +115,7 @@ const (
 	URLStatusScanFailure
 )
 
-//go:generate enumer -type=MoveStatus -trimprefix=MoveStatus -transform=macro -json
+//go:generate enumerx -type=MoveStatus -trimprefix=@type -transform=snake_upper -json
 type MoveStatus int
 
 const (
@@ -124,7 +124,7 @@ const (
 	MoveStatusFailure
 )
 
-//go:generate enumer -type=DeleteStatus -trimprefix=DeleteStatus -transform=macro -json
+//go:generate enumerx -type=DeleteStatus -trimprefix=@type -transform=snake_upper -json
 type DeleteStatus int
 
 const (
@@ -137,7 +137,7 @@ const (
 	DeleteStatusCopy
 )
 
-//go:generate enumer -type=MarkStatus -trimprefix=MarkStatus -transform=macro -json
+//go:generate enumerx -type=MarkStatus -trimprefix=@type -transform=snake_upper -json
 type MarkStatus int
 
 const (

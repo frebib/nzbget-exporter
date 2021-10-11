@@ -1,6 +1,9 @@
-ARG EXPORTER_VER=0.2.0
+ARG EXPORTER_VER=0.2.1
 
-FROM golang:alpine3.13
+FROM golang:alpine3.14
+
+RUN apk add git && \
+    go install github.com/niktri/enumerx@latest
 
 WORKDIR /build
 ADD go.mod go.sum ./
@@ -8,14 +11,15 @@ RUN go mod download
 
 ARG EXPORTER_VER
 ADD . ./
-RUN go build \
+RUN go generate && \
+    go build \
         -v \
         -ldflags="-w -s -X 'main.Version=$EXPORTER_VER'" \
         -o /nzbget_exporter
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FROM spritsail/alpine:3.12
+FROM spritsail/alpine:3.14
 
 ARG EXPORTER_VER
 
