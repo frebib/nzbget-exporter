@@ -109,8 +109,11 @@ type URLStatus int
 
 const (
 	URLStatusNone URLStatus = iota
+	URLStatusRunning
+	URLStatusFinished
 	URLStatusSuccess
 	URLStatusFailure
+	URLStatusRetry
 	URLStatusScanSkipped
 	URLStatusScanFailure
 )
@@ -133,6 +136,7 @@ const (
 	DeleteStatusHealth
 	DeleteStatusDupe
 	DeleteStatusBad
+	DeleteStatusGood
 	DeleteStatusScan
 	DeleteStatusCopy
 )
@@ -144,6 +148,7 @@ const (
 	MarkStatusNone MarkStatus = iota
 	MarkStatusGood
 	MarkStatusBad
+	MarkStatusSuccess
 )
 
 func (h *History) UnmarshalJSON(b []byte) error {
