@@ -8,7 +8,8 @@ steps:
   commands:
   - apk --no-cache add gcc git musl-dev
 
-  - go install github.com/niktri/enumerx@latest
+  - git clone https://github.com/frebib/enumerx.git -b go1.18 /tmp/enumerx
+  - (cd /tmp/enumerx; go install)
 
   - go generate
   - go build -o nzbget_exporter

@@ -1,9 +1,11 @@
 ARG EXPORTER_VER=0.2.2
 
-FROM golang:alpine3.14
+FROM golang:alpine3.15
 
+WORKDIR /tmp/enumerx
 RUN apk add git && \
-    go install github.com/niktri/enumerx@latest
+    git clone https://github.com/frebib/enumerx.git -b go1.18 . && \
+    go install
 
 WORKDIR /build
 ADD go.mod go.sum ./
