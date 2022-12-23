@@ -25,12 +25,11 @@ FROM spritsail/alpine:3.14
 
 ARG EXPORTER_VER
 
-LABEL maintainer="frebib <nzbget-exporter@frebib.net>" \
-      org.label-schema.vendor="frebib" \
-      org.label-schema.name="nzbget-exporter" \
-      org.label-schema.url="https://github.com/frebib/nzbget-exporter" \
-      org.label-schema.description="NZBGet Prometheus metrics exporter" \
-      org.label-schema.version=${EXPORTER_VER}
+LABEL org.opencontainers.image.authors="frebib <nzbget-exporter@frebib.net>" \
+      org.opencontainers.image.title="nzbget-exporter" \
+      org.opencontainers.image.url="https://github.com/frebib/nzbget-exporter" \
+      org.opencontainers.image.description="NZBGet Prometheus metrics exporter" \
+      org.opencontainers.image.version=${EXPORTER_VER}
 
 COPY --from=0 /nzbget_exporter /usr/bin
 CMD ["/usr/bin/nzbget_exporter"]
