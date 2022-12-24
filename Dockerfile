@@ -1,11 +1,8 @@
 ARG EXPORTER_VER=0.2.2
 
-FROM golang:alpine3.15
+FROM golang:alpine
 
-WORKDIR /tmp/enumerx
-RUN apk add git && \
-    git clone https://github.com/frebib/enumerx.git -b go1.18 . && \
-    go install
+RUN go install github.com/frebib/enumerx@latest
 
 WORKDIR /build
 ADD go.mod go.sum ./
@@ -21,7 +18,7 @@ RUN go generate && \
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FROM spritsail/alpine:3.14
+FROM spritsail/alpine:3.17
 
 ARG EXPORTER_VER
 
