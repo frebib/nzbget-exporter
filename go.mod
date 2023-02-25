@@ -24,7 +24,7 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/stretchr/testify v1.5.1 // indirect
 	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064 // indirect
-	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 )
