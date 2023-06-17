@@ -18,7 +18,7 @@ RUN go generate && \
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FROM spritsail/alpine:3.17
+FROM spritsail/alpine:3.18
 
 ARG EXPORTER_VER
 
