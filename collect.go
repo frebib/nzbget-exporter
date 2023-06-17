@@ -450,6 +450,7 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 	}()
 
 	wg.Wait()
+	cfgWg.Wait()
 }
 
 func (c *NZBGetCollector) getApi(endpoint string, out interface{}) error {
