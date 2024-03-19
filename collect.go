@@ -313,7 +313,7 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 		metrics <- prom.MustNewConstMetric(c.articleCache, prom.GaugeValue, float64(status.ArticleCache))
 		metrics <- prom.MustNewConstMetric(c.diskSpaceFree, prom.GaugeValue, float64(status.FreeDiskSpace))
 		metrics <- prom.MustNewConstMetric(c.downloadLimit, prom.GaugeValue, float64(status.DownloadLimit))
-		metrics <- prom.MustNewConstMetric(c.downloadPaused, prom.CounterValue, floatOf(status.DownloadPaused))
+		metrics <- prom.MustNewConstMetric(c.downloadPaused, prom.GaugeValue, floatOf(status.DownloadPaused))
 		metrics <- prom.MustNewConstMetric(c.downloadTimeSec, prom.GaugeValue, float64(status.DownloadTimeSec))
 		metrics <- prom.MustNewConstMetric(c.downloadedSize, prom.CounterValue, float64(status.DownloadedSize))
 		metrics <- prom.MustNewConstMetric(c.forcedSize, prom.GaugeValue, float64(status.ForcedSize))
