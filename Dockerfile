@@ -13,6 +13,7 @@ ADD . ./
 RUN go generate && \
     go build \
         -v \
+        -trimpath \
         -ldflags="-w -s -X 'main.Version=$EXPORTER_VER'" \
         -o /nzbget_exporter
 
