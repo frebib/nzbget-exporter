@@ -20,7 +20,7 @@ NZBGet has an [unsigned integer bug](https://github.com/nzbget/nzbget/issues/693
 Build from source
 ```sh
 git clone https://github.com/frebib/nzbget-exporter.git .
-go install github.com/niktri/enumerx@latest
+go install github.com/frebib/enumerx@latest
 go generate
 go build -o nzbget_exporter
 ./nzbget_exporter --help

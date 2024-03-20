@@ -7,9 +7,7 @@ steps:
   image: golang:alpine
   commands:
   - apk --no-cache add gcc git musl-dev
-
-  - git clone https://github.com/frebib/enumerx.git -b go1.18 /tmp/enumerx
-  - (cd /tmp/enumerx; go install)
+  - go install github.com/frebib/enumerx@latest
 
   - go generate
   - go build -o nzbget_exporter
