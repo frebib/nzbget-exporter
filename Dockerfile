@@ -1,4 +1,4 @@
-ARG EXPORTER_VER=0.2.3
+ARG EXPORTER_VER=0.2.4
 
 FROM golang:alpine
 
@@ -19,7 +19,7 @@ RUN go generate && \
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-FROM spritsail/alpine:3.18
+FROM spritsail/alpine:3.19
 
 ARG EXPORTER_VER
 
