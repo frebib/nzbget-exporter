@@ -68,3 +68,8 @@ Options:
 Help Options:
   -h, --help       Show this help message
 ```
+
+## Grafana Dashboard
+An example grafana starter dashboard is included in the grafana directory.
+![Grafana Dashboard](./grafana/grafana.png)
+
