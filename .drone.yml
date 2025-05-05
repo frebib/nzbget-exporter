@@ -28,18 +28,55 @@ depends_on:
 
 steps:
 - name: docker build
+  image: registry.spritsail.io/spritsail/docker-build
   pull: always
-  image: spritsail/docker-build
 
-- name: docker publish
+- name: docker publish spritsail
+  image: registry.spritsail.io/spritsail/docker-publish
   pull: always
-  image: spritsail/docker-publish
   settings:
+    registry: registry.spritsail.io
+    login: {from_secret: spritsail_login}
     repo: frebib/nzbget-exporter
-    tags:
+    tags: &tags
     - latest
     - '%label org.label-schema.version'
+    delete: no
+  depends_on:
+    - docker build
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+- name: docker publish ghcr
+  image: registry.spritsail.io/spritsail/docker-publish
+  pull: never
+  settings:
+    registry: ghcr.io
+    login: {from_secret: ghcr_login}
+    repo: frebib/nzbget-exporter
+    tags: *tags
+    delete: no
+  depends_on:
+    - docker build
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+- name: docker publish docker hub
+  image: registry.spritsail.io/spritsail/docker-publish
+  pull: never
+  settings:
     login: {from_secret: docker_login}
+    repo: frebib/nzbget-exporter
+    tags: *tags
+  depends_on:
+    - docker publish spritsail
+    - docker publish ghcr
   when:
     branch:
     - master
@@ -49,6 +86,9 @@ steps:
 ---
 kind: pipeline
 name: update-readme
+
+depends_on:
+- docker
 
 steps:
 - name: dockerhub-readme
@@ -66,6 +106,6 @@ steps:
 
 ---
 kind: signature
-hmac: 934099a4a8192763ffe0133d5513c7f511b6e5695acf44dee123e12c805d8d71
+hmac: 1b70cfb8a9cdff6450ac0985f33e215b36694bb896c42b8edca5fe15ff7c28ef
 
 ...
