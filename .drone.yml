@@ -31,7 +31,7 @@ steps:
   image: registry.spritsail.io/spritsail/docker-build
   pull: always
 
-- name: docker publish spritsail
+- name: docker publish
   image: registry.spritsail.io/spritsail/docker-publish
   pull: always
   settings:
@@ -44,39 +44,6 @@ steps:
     delete: no
   depends_on:
     - docker build
-  when:
-    branch:
-    - master
-    event:
-    - push
-
-- name: docker publish ghcr
-  image: registry.spritsail.io/spritsail/docker-publish
-  pull: never
-  settings:
-    registry: ghcr.io
-    login: {from_secret: ghcr_login}
-    repo: frebib/nzbget-exporter
-    tags: *tags
-    delete: no
-  depends_on:
-    - docker build
-  when:
-    branch:
-    - master
-    event:
-    - push
-
-- name: docker publish docker hub
-  image: registry.spritsail.io/spritsail/docker-publish
-  pull: never
-  settings:
-    login: {from_secret: docker_login}
-    repo: frebib/nzbget-exporter
-    tags: *tags
-  depends_on:
-    - docker publish spritsail
-    - docker publish ghcr
   when:
     branch:
     - master
@@ -106,6 +73,6 @@ steps:
 
 ---
 kind: signature
-hmac: 1b70cfb8a9cdff6450ac0985f33e215b36694bb896c42b8edca5fe15ff7c28ef
+hmac: 15dd50b8a08a6676bec26416250b421355e79cfaed73d9117a6b8ffd83c3abf6
 
 ...
