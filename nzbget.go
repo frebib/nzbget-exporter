@@ -345,6 +345,7 @@ type ServerVolume struct {
 	ID                  int   `json:"-"`
 	TotalBytes          int64 `json:"-"`
 	TotalArticleSuccess int   `json:"-"`
+	TotalArticleFailed int   `json:"-"`
 }
 
 func (v *ServerVolume) UnmarshalJSON(b []byte) error {
@@ -370,7 +371,6 @@ func (v *ServerVolume) UnmarshalJSON(b []byte) error {
 	v.ID = values.ServerID
 	v.TotalBytes = joinInt64(values.TotalSizeLo, values.TotalSizeHi)
 
-	// NGA tidy up start
 	var totalSuccess, totalFailed int
 	for _, day := range values.ArticlesPerDays {
 		totalSuccess += day.Success
@@ -378,7 +378,7 @@ func (v *ServerVolume) UnmarshalJSON(b []byte) error {
 	}
 
 	v.TotalArticleSuccess = totalSuccess
-	// NGA tidy up end
+	v.TotalArticleFailed = totalFailed
 
 	return nil
 }

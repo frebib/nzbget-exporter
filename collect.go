@@ -40,6 +40,7 @@ type NZBGetCollector struct {
 	newsServerActive         *prom.Desc
 	newsServerBytes          *prom.Desc
 	newsServerArticleSuccess *prom.Desc
+	newsServerArticleFailed *prom.Desc
 
 	historyCategoryCount       *prom.Desc
 	historyFileSizeBytes       *prom.Desc
@@ -182,6 +183,11 @@ func NewNZBGetCollector(config *ExporterConfig) *NZBGetCollector {
 		newsServerArticleSuccess: prom.NewDesc(
 			prom.BuildFQName(ns, "news_server", "total_article_success"),
 			"Total successful articles from this news server",
+			[]string{"id", "server"}, nil,
+		),
+		newsServerArticleFailed: prom.NewDesc(
+			prom.BuildFQName(ns, "news_server", "total_article_failed"),
+			"Total failed articles from this news server",
 			[]string{"id", "server"}, nil,
 		),
 		historyCategoryCount: prom.NewDesc(
@@ -376,9 +382,8 @@ func (c *NZBGetCollector) Collect(metrics chan<- prom.Metric) {
 
 			metrics <- prom.MustNewConstMetric(c.newsServerBytes, prom.GaugeValue, bytes, id, name)
 
-			// NGA tidy up start
 			metrics <- prom.MustNewConstMetric(c.newsServerArticleSuccess, prom.CounterValue, float64(volume[idx].TotalArticleSuccess), id, name)
-			// NGA tidy up end
+			metrics <- prom.MustNewConstMetric(c.newsServerArticleFailed, prom.CounterValue, float64(volume[idx].TotalArticleFailed), id, name)
 
 		}
 	}()
