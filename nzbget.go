@@ -342,15 +342,24 @@ func reflectInto(v reflect.Value, str string) {
 }
 
 type ServerVolume struct {
-	ID         int   `json:"-"`
-	TotalBytes int64 `json:"-"`
+	ID                  int   `json:"-"`
+	TotalBytes          int64 `json:"-"`
+	TotalArticleSuccess int   `json:"-"`
+	TotalArticleFailed  int   `json:"-"`
 }
 
 func (v *ServerVolume) UnmarshalJSON(b []byte) error {
+
+	type ArticlePerDay struct {
+		Success int `json:"Success"`
+		Failed  int `json:"Failed"`
+	}
+
 	type temp struct {
-		ServerID    int    `json:"ServerID"`
-		TotalSizeLo uint32 `json:"TotalSizeLo"`
-		TotalSizeHi uint32 `json:"TotalSizeHi"`
+		ServerID        int             `json:"ServerID"`
+		TotalSizeLo     uint32          `json:"TotalSizeLo"`
+		TotalSizeHi     uint32          `json:"TotalSizeHi"`
+		ArticlesPerDays []ArticlePerDay `json:"ArticlesPerDays"`
 	}
 
 	values := temp{}
@@ -361,5 +370,15 @@ func (v *ServerVolume) UnmarshalJSON(b []byte) error {
 
 	v.ID = values.ServerID
 	v.TotalBytes = joinInt64(values.TotalSizeLo, values.TotalSizeHi)
+
+	var totalSuccess, totalFailed int
+	for _, day := range values.ArticlesPerDays {
+		totalSuccess += day.Success
+		totalFailed += day.Failed
+	}
+
+	v.TotalArticleSuccess = totalSuccess
+	v.TotalArticleFailed = totalFailed
+
 	return nil
 }
