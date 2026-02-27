@@ -270,7 +270,7 @@ func (c *NZBGetConfig) UnmarshalJSON(b []byte) error {
 				if nCap == 0 {
 					nCap = 2
 				}
-				for nCap < key {
+				for nCap <= key {
 					nCap *= 2
 				}
 				// make a new slice, and copy existing values in
